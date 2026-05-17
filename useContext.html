@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading List - useContext</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #f5f6f8;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .header {
+            padding: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        h1 {
+            color: #444;
+            margin: 0;
+            font-size: 28px;
+        }
+        .book-list-container {
+            padding: 30px;
+        }
+        .book-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .book-card {
+            width: calc(33.333% - 14px);
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 10px;
+            box-sizing: border-box;
+            position: relative;
+            background: #fff;
+            transition: box-shadow 0.2s;
+        }
+        .book-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .book-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            background: white;
+            border-radius: 15px;
+            padding: 2px;
+        }
+        .action-btn {
+            background: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #777;
+            padding: 0;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .action-btn:hover {
+            background: #eee;
+            color: #333;
+        }
+        .book-image {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .book-title {
+            margin-top: 15px;
+            font-size: 16px;
+            color: #555;
+            padding: 0 5px 10px 5px;
+        }
+        .book-title h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: normal;
+        }
+        
+        /* Book Edit Form inside Card */
+        .book-edit-form {
+            margin-top: 10px;
+        }
+        .book-edit-form label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .book-edit-form input {
+            width: 100%;
+            padding: 6px;
+            margin-bottom: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        .book-edit-form button {
+            background-color: #00c49a;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .book-edit-form button:hover {
+            background-color: #00a884;
+        }
+
+        .add-book-section {
+            background-color: #00c49a;
+            padding: 30px;
+            color: white;
+        }
+        .add-book-section h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 15px;
+            outline: none;
+        }
+        button.create-btn {
+            background: white;
+            color: #00c49a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        button.create-btn:hover {
+            background: #f0f0f0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #777;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, createContext, useContext } = React;
+        const apiUrl = 'http://localhost:3000/books';
+
+        // 1. Context: BooksContext
+        const BooksContext = createContext();
+
+        // 2. Provider Component
+        const Provider = ({ children }) => {
+            const [books, setBooks] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            const fetchBooks = async () => {
+                setLoading(true);
+                try {
+                    const response = await fetch(apiUrl);
+                    const data = await response.json();
+                    setBooks(data);
+                } catch (err) {
+                    console.error('Error fetching books:', err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const createBook = async (title) => {
+                try {
+                    const newBook = {
+                        title,
+                        image: 'https://picsum.photos/seed/' + Date.now() + '/250/150'
+                    };
+                    await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newBook)
+                    });
+                    fetchBooks();
+                } catch (err) {
+                    alert('Error creating book');
+                }
+            };
+
+            const editBookById = async (id, newTitle) => {
+                try {
+                    const bookToUpdate = books.find(b => b.id === id);
+                    await fetch(apiUrl + '/' + id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...bookToUpdate, title: newTitle })
+                    });
+                    fetchBooks();
+                } catch (err) {
+                    alert('Error updating book');
+                }
+            };
+
+            const deleteBookById = async (id) => {
+                if(window.confirm('Are you sure you want to delete this book?')) {
+                    try {
+                        await fetch(apiUrl + '/' + id, { method: 'DELETE' });
+                        fetchBooks();
+                    } catch (err) {
+                        alert('Error deleting book');
+                    }
+                }
+            };
+
+            const valueToShare = {
+                books,
+                loading,
+                fetchBooks,
+                createBook,
+                editBookById,
+                deleteBookById
+            };
+
+            return (
+                <BooksContext.Provider value={valueToShare}>
+                    {children}
+                </BooksContext.Provider>
+            );
+        };
+
+        // 3. BookEdit Component
+        const BookEdit = ({ book, onSubmit }) => {
+            const [title, setTitle] = useState(book.title);
+            const { editBookById } = useContext(BooksContext);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                await editBookById(book.id, title);
+                onSubmit(); // Đóng form edit sau khi lưu
+            };
+
+            return (
+                <form onSubmit={handleSubmit} className="book-edit-form">
+                    <label>Title</label>
+                    <input 
+                        value={title} 
+                        onChange={(e) => setTitle(e.target.value)} 
+                        autoFocus
+                    />
+                    <button>Save</button>
+                </form>
+            );
+        };
+
+        // 4. BookShow Component
+        const BookShow = ({ book }) => {
+            const [showEdit, setShowEdit] = useState(false);
+            const { deleteBookById } = useContext(BooksContext);
+
+            const handleDeleteClick = () => {
+                deleteBookById(book.id);
+            };
+
+            const handleEditClick = () => {
+                setShowEdit(!showEdit);
+            };
+
+            const handleSubmit = () => {
+                setShowEdit(false);
+            };
+
+            let content = <h3>{book.title}</h3>;
+            if (showEdit) {
+                content = <BookEdit onSubmit={handleSubmit} book={book} />;
+            }
+
+            return (
+                <div className="book-card">
+                    <div className="book-actions">
+                        <button className="action-btn" onClick={handleEditClick} title="Edit">&#9998;</button>
+                        <button className="action-btn" onClick={handleDeleteClick} title="Delete">&times;</button>
+                    </div>
+                    <img src={book.image} alt={book.title} className="book-image" onError={(e) => { e.target.src = 'https://picsum.photos/seed/placeholder/250/150'; }} />
+                    <div className="book-title">
+                        {content}
+                    </div>
+                </div>
+            );
+        };
+
+        // 5. BookList Component
+        const BookList = () => {
+            const { books, loading } = useContext(BooksContext);
+
+            if (loading) return <div className="loading">Loading books...</div>;
+            if (books.length === 0) return <div className="loading">No books in the list.</div>;
+
+            const renderedBooks = books.map((book) => {
+                return <BookShow key={book.id} book={book} />;
+            });
+
+            return (
+                <div className="book-list-container">
+                    <div className="book-list">
+                        {renderedBooks}
+                    </div>
+                </div>
+            );
+        };
+
+        // 6. BookCreate Component
+        const BookCreate = () => {
+            const { createBook } = useContext(BooksContext);
+            const [title, setTitle] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!title.trim()) return;
+                await createBook(title);
+                setTitle('');
+            };
+
+            return (
+                <div className="add-book-section">
+                    <h2>Add a Book</h2>
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label>Title</label>
+                            <input 
+                                value={title} 
+                                onChange={(e) => setTitle(e.target.value)} 
+                                placeholder="Enter book title"
+                            />
+                        </div>
+                        <button type="submit" className="create-btn">Create!</button>
+                    </form>
+                </div>
+            );
+        };
+
+        // 7. App Component
+        const App = () => {
+            const { fetchBooks } = useContext(BooksContext);
+
+            useEffect(() => {
+                fetchBooks();
+            }, []);
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>Reading List (useContext)</h1>
+                    </div>
+                    <BookList />
+                    <BookCreate />
+                </div>
+            );
+        };
+
+        // 8. Render
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(
+            <Provider>
+                <App />
+            </Provider>
+        );
+    </script>
+</body>
+</html>
