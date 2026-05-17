@@ -1,0 +1,19 @@
+{
+  "books": [
+    {
+      "id": "1",
+      "title": "Harry Potter",
+      "image": "https://picsum.photos/seed/harry/250/150"
+    },
+    {
+      "id": "2",
+      "title": "teset",
+      "image": "https://picsum.photos/seed/teset/250/150"
+    },
+    {
+      "id": "3",
+      "title": "test",
+      "image": "https://picsum.photos/seed/test/250/150"
+    }
+  ]
+}
